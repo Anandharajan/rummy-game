@@ -2,6 +2,15 @@ import reflex as rx
 import random
 from typing import List, Tuple
 
+# Define a soft color palette
+LIGHT_BLUE = "#ADD8E6"
+LIGHT_GREEN = "#D4EDDA" # A softer green
+LIGHT_YELLOW = "#FFF3CD" # A softer yellow
+LIGHT_PINK = "#F8D7DA" # A softer pink
+WHITE = "#FFFFFF"
+BLACK = "#000000"
+GRAY = "#E0E0E0" # A softer gray
+
 SUITS = ["♠", "♥", "♦", "♣"]
 RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 
@@ -42,28 +51,45 @@ class RummyState(rx.State):
         if len(self.player_hand) == 0:
             self.winner = True
 
-def card_component(card: Tuple[str, str], on_click):
-    return rx.box(
-        rx.text(f"{card[0]}{card[1]}", font_size="2em", color="black"),
-        border="1px solid #ccc",
-        padding="20px 10px",
-        border_radius="10px",
-        on_click=on_click,
-        cursor="pointer",
-        bg="white",
-        width="80px",
-        height="120px",
-        display="flex",
-        align_items="center",
-        justify_content="center",
-        box_shadow="0px 2px 4px rgba(0,0,0,0.1)",
+def card_component(card: Tuple[str, str], is_discardable: rx.Var[bool]):
+    base_box_props = {
+        "border": "1px solid #ccc",
+        "padding": "20px 10px",
+        "border_radius": "10px",
+        "bg": WHITE,
+        "width": "80px",
+        "height": "120px",
+        "display": "flex",
+        "align_items": "center",
+        "justify_content": "center",
+        "box_shadow": "0px 2px 4px rgba(0,0,0,0.1)",
+    }
+
+    return rx.cond(
+        is_discardable,
+        rx.box(
+            rx.text(f"{card[0]}{card[1]}", font_size="2em", color="black"),
+            **base_box_props,
+            on_click=lambda: RummyState.discard(card),
+            cursor="pointer",
+            opacity="1",
+        ),
+        rx.box(
+            rx.text(f"{card[0]}{card[1]}", font_size="2em", color="black"),
+            **base_box_props,
+            cursor="default",
+            opacity="0.7",
+        )
     )
 
 def player_hand(hand: List[Tuple[str, str]]):
     return rx.hstack(
         rx.foreach(
             hand,
-            lambda card: card_component(card, RummyState.discard(card))
+            lambda card: card_component(
+                card,
+                is_discardable=(RummyState.turn_phase == "discard")
+            )
         ),
         spacing="4"
     )
@@ -72,15 +98,20 @@ def discard_pile_component():
     return rx.box(
         rx.cond(
             RummyState.discard_pile,
-            card_component(RummyState.discard_pile[-1], RummyState.draw_from_discard),
-            rx.text("No discard yet")
+            card_component(
+                RummyState.discard_pile[-1],
+                is_discardable=(RummyState.turn_phase == "draw")
+            ),
+            rx.text("No discard yet", color=BLACK)
         ),
         width="100px",
         height="150px",
-        border="2px dashed gray",
+        border="2px dashed " + GRAY,
         display="flex",
         align_items="center",
-        justify_content="center"
+        justify_content="center",
+        opacity=rx.cond(RummyState.turn_phase == "draw", "1", "0.5"),
+        pointer_events=rx.cond(RummyState.turn_phase == "draw", "auto", "none"),
     )
 
 def rules_accordion():
@@ -98,9 +129,9 @@ def rules_accordion():
 def index():
     return rx.container(
         rx.vstack(
-            rx.heading("Simple Rummy", size="9"),
+            rx.heading("Simple Rummy", size="9", color=BLACK),
             rules_accordion(),
-            rx.button("Start New Game", on_click=RummyState.start_game),
+            rx.button("Start New Game", on_click=RummyState.start_game, color_scheme="blue"),
             rx.cond(
                 RummyState.winner,
                 rx.heading("You Win!", size="8", color="green"),
@@ -111,36 +142,44 @@ def index():
                             "Draw a card from the deck or discard pile.",
                             "Discard a card from your hand."
                         ),
-                        font_size="1.5em"
+                        font_size="1.8em", # Make it more prominent
+                        color=BLACK,
+                        font_weight="bold"
                     ),
                 )
             ),
-            rx.heading("Your Hand", size="4"),
+            rx.heading("Your Hand", size="4", color=BLACK),
             player_hand(RummyState.player_hand),
             rx.hstack(
                 rx.vstack(
-                    rx.heading("Deck", size="4"),
+                    rx.heading("Deck", size="4", color=BLACK),
                     rx.box(
-                        rx.text("Draw", font_size="2em"),
+                        rx.text("Draw", font_size="2em", color=BLACK),
                         width="100px",
                         height="150px",
-                        border="2px solid black",
+                        border="2px solid " + BLACK,
                         display="flex",
                         align_items="center",
                         justify_content="center",
                         on_click=RummyState.draw_from_deck,
-                        cursor="pointer"
+                        cursor="pointer",
+                        opacity=rx.cond(RummyState.turn_phase == "draw", "1", "0.5"),
+                        pointer_events=rx.cond(RummyState.turn_phase == "draw", "auto", "none"),
+                        bg=LIGHT_BLUE # Soft color for deck
                     )
                 ),
                 rx.vstack(
-                    rx.heading("Discard Pile", size="4"),
+                    rx.heading("Discard Pile", size="4", color=BLACK),
                     discard_pile_component()
                 ),
                 spacing="4"
             ),
             spacing="4",
             align="center"
-        )
+        ),
+        bg=LIGHT_GREEN, # Overall background color
+        min_height="100vh", # Ensure background covers full height
+        padding="20px"
     )
 
 app = rx.App()

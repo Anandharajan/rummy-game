@@ -64,3 +64,7 @@ This app can be deployed to [Reflex Cloud](https://reflex.dev/docs/hosting/deplo
     ```bash
     reflex deploy
     ```
+
+## Play Online
+
+You can play the game online here: https://rummy-game-gray-grass.reflex.run
